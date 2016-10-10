@@ -1,0 +1,66 @@
+# TODO
+# http://askubuntu.com/a/504299/455792
+
+import os, shutil
+import subprocess
+from PIL import Image, ImageFilter
+
+output = subprocess.check_output("scanimage -L", shell=True)
+scanner_id = output[8:].split("'")[0]
+#scanner_id = 'genesys:libusb:002:003'
+scan_res   = 600
+scan_mode  = 'lineart'
+scan_w     = 210
+scan_h     = 148
+
+# resolution
+scan_res = raw_input('Resolution [dpi]: ')
+scan_res = int(scan_res)
+
+# Scan mode
+answer = ''
+answers  = ['lineart']
+while not(answer in answers):
+    answer = raw_input('Mode? ... %s: ' %('/'.join(answers)))
+
+# width
+scan_w = raw_input('Width [mm]: ')
+scan_w = int(scan_w)
+scan_h = raw_input('Height [mm]: ')
+scan_h = int(scan_h)
+
+# Test scanner
+#command = "scanimage --test -d '%s'" %(scanner_id)
+#os.system(command)
+
+# scan
+i = 0
+doscan = True
+while doscan:
+    command = "scanimage -d '%s' --resolution %s --mode %s -x %s -y %s > image.pbm" %(scanner_id, scan_res, scan_mode, scan_w, scan_h)
+    subprocess.check_call(str(command), shell=True)
+    i = i+1
+    imgname = 'image_{:04d}.pbm'.format(i)
+    shutil.move('image.pbm', imgname)
+    # convert image
+    if scan_mode == 'lineart':
+        img = Image.open(imgname)
+        os.remove(imgname)
+        img = img.filter(ImageFilter.MedianFilter)
+        imgname = '%s.tif' %(''.join(imgname.split('.')[0:-1]))
+        tmpname = 'tmp.tif'
+        img.save(tmpname)
+        command = "tiffcp -c g4 %s %s" %(tmpname, imgname)
+        subprocess.check_call(str(command), shell=True)
+        os.remove(tmpname)
+    # continue?
+    answer = ''
+    answers = ['y', 'n']
+    while not(answer in answers):
+        answer = raw_input('Continue? ... %s: ' %('/'.join(answers)))
+        if answer=='':
+            answer = 'y'
+    if answer == 'n':
+        doscan = False
+
+#shutil.move()
